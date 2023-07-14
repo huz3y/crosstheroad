@@ -1,0 +1,133 @@
+from microbit import *
+import random
+
+class Game:
+    def __init__(self):
+        self.player = None
+        self.obstacles = []
+        self.score = 0
+        self.level = 1
+        self.isStarted = False
+
+    def start(self):
+        # Initialize the game and start the game loop
+        self.isStarted = True
+        self.player = Player(self)
+        self.spawn_obstacles()
+
+        while self.isStarted:
+            # Check button presses and update game state
+            if button_a.was_pressed():
+                self.player.move("left")
+            if button_b.was_pressed():
+                self.player.move("right")
+            if button_a.is_pressed() and button_b.is_pressed():
+                self.player.move("forward")
+
+            for obstacle in self.obstacles:
+                obstacle.move()
+
+            if self.check_collision():
+                self.isStarted = False
+                self.end_game()
+            elif self.player.y == 0:
+                self.level_complete()
+
+            self.score += 1
+            sleep(self.get_speed())
+
+    def spawn_obstacles(self):
+        # Spawn initial set of obstacles
+        for i in range(1, 5):
+            if i not in [1, 3, 5]:
+                lane = i
+                obstacle = Obstacle(self, lane)
+                self.obstacles.append(obstacle)
+
+    def check_collision(self):
+        # Check if the player has collided with any obstacles
+        player_x = self.player.x
+        player_y = self.player.y
+
+        for obstacle in self.obstacles:
+            if obstacle.y == player_y and obstacle.x == player_x:
+                return True
+
+        return False
+
+    def end_game(self):
+        # End the game and display "Game Over"
+        display.scroll("Game Over!")
+        display.clear()
+
+    def level_complete(self):
+        # Handle level completion logic and start the next level
+        display.scroll("Level " + str(self.level) + " Complete!")
+        self.level += 1
+        self.reset()
+        self.start()
+
+    def reset(self):
+        # Reset the game state for a new level
+        self.score = 0
+        self.obstacles = []
+        self.isStarted = False
+
+    def get_speed(self):
+        # Retrieve the speed for the current level
+        speeds = [1000, 800, 600, 400, 200]  # Adjust the values as needed
+        if self.level <= len(speeds):
+            return speeds[self.level - 1]
+        else:
+            return speeds[-1]  # Use the last speed for subsequent levels
+
+    def try_set_pixel(self, x, y, b):
+        # Helper method to set a pixel on the MicroBit display
+        if x in range(0, 5) and y in range(0, 5):
+            display.set_pixel(x, y, b)
+
+class Player:
+    def __init__(self, game):
+        # Initialize the player character
+        self.game = game
+        self.x = 2
+        self.y = 4
+        self.brightness = 9
+        self.game.try_set_pixel(self.x, self.y, self.brightness)
+
+    def move(self, direction):
+        # Move the player character in the specified direction
+        self.game.try_set_pixel(self.x, self.y, 0)
+
+        if direction == "left" and self.x > 0:
+            self.x -= 1
+        elif direction == "right" and self.x < 4:
+            self.x += 1
+        elif direction == "forward" and self.y > 0:
+            self.y -= 1
+
+        self.game.try_set_pixel(self.x, self.y, self.brightness)
+
+class Obstacle:
+    def __init__(self, game, lane):
+        # Initialize an obstacle in the specified lane
+        self.game = game
+        self.lane = lane
+        self.x = random.randint(0, 4)
+        self.y = self.lane - 1
+        self.brightness = 4
+        self.game.try_set_pixel(self.x, self.y, self.brightness)
+
+    def move(self):
+        # Move the obstacle horizontally
+        self.game.try_set_pixel(self.x, self.y, 0)
+
+        if self.x < 4:
+            self.x += 1
+        else:
+            self.x = 0
+
+        self.game.try_set_pixel(self.x, self.y, self.brightness)
+
+game = Game()
+game.start()
